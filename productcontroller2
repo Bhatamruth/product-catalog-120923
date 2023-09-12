@@ -1,0 +1,432 @@
+package com.casestudy.amruthvbhat.productcatalogueservice1.Controller;
+
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.casestudy.amruthvbhat.productcatalogueservice1.Service.ProductService;
+import com.casestudy.amruthvbhat.productcatalogueservice1.Model.Product;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.NoSuchElementException;
+
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * This class contains JUnit Jupiter test cases for the {@link ProductController} class.
+ * It focuses on testing the various methods and functionalities of the controller
+ * responsible for managing products within a product catalog.
+ *
+ * <p>Each test case in this class covers specific scenarios related to the behavior
+ * of the {@link ProductController} methods, including successful operations,
+ * error handling, and edge cases.
+ *
+ * @author amruth
+ * @version 1.0
+ */
+public class ProductControllerTest2 {
+
+  @InjectMocks
+  private ProductController productController;
+
+  @Mock
+  private ProductService productService;
+
+  /**
+  * Retrieve a list of all products.
+  * This endpoint allows clients to retrieve a list of all available products.
+  *
+  * @return A list of all products.
+  */    
+  //an empty product list, a non-empty product list, and an exception thrown by the service
+  @Test
+   public void testListEmptyProducts() {
+    // Arrange
+    MockitoAnnotations.openMocks(this); // Initialize mocks
+
+    List<Product> emptyProductList = new ArrayList<>();
+    when(productService.listAll()).thenReturn(emptyProductList);
+
+    // Act
+    ResponseEntity<?> response = productController.list();
+
+    // Assert
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertEquals("No products found.", response.getBody());
+    verify(productService, times(1)).listAll();
+    verifyNoMoreInteractions(productService);
+  }
+
+  @Test
+  public void testListNonEmptyProducts() {
+    // Arrange
+    MockitoAnnotations.openMocks(this); // Initialize mocks
+
+    List<Product> nonEmptyProductList = new ArrayList<>();
+    nonEmptyProductList.add(new Product(1, "Product 1", 0, "category1"));
+    nonEmptyProductList.add(new Product(2,"Product 2",100,"category1"));
+    when(productService.listAll()).thenReturn(nonEmptyProductList);
+
+    // Act
+    ResponseEntity<?> response = productController.list();
+
+    // Assert
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertEquals(nonEmptyProductList, response.getBody());
+    verify(productService, times(1)).listAll();
+    verifyNoMoreInteractions(productService);
+  }
+
+    @Test
+    public void testListExceptionHandling() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        when(productService.listAll()).thenThrow(new RuntimeException("Simulated exception"));
+
+        // Act
+        ResponseEntity<?> response = productController.list();
+
+        // Assert
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Error occurred while fetching the list of products.", response.getBody());
+        verify(productService, times(1)).listAll();
+        verifyNoMoreInteractions(productService);
+    }
+
+//------------------------------------------------------------------------------------------------------------
+    /**
+     * Retrieve a product by its unique ID.
+     *
+     * @param id The unique identifier of the product.
+     * @return The product information if found, or an error message if not found.
+     */
+    //one for when the product is found and another for when the product is not found.
+    @Test
+    public void testGetProductFound() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        Integer productId = 1; // Replace with an existing product ID
+        Product product = new Product(productId,"Product 1", 100, "Category 1");
+        when(productService.get(productId)).thenReturn(product);
+
+        // Act
+        ResponseEntity<?> response = productController.get(productId);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        String expectedSuccessMessage = "Product Found!! \n\nProduct ID:" + product.getId()
+                + "\nProduct name:" + product.getName() + "\nProduct price:" 
+                + product.getPrice() + "\nProduct category:" + product.getCategory();
+        assertEquals(expectedSuccessMessage, response.getBody());
+        verify(productService, times(1)).get(productId);
+        verifyNoMoreInteractions(productService);
+    }
+
+    @Test
+    public void testGetProductNotFound() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        Integer productId = 99; // Replace with a non-existent product ID
+        when(productService.get(productId)).thenThrow(new NoSuchElementException("Product not found"));
+
+        // Act
+        ResponseEntity<?> response = productController.get(productId);
+
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals("Product with ID " + productId + " not found.", response.getBody());
+        verify(productService, times(1)).get(productId);
+        verifyNoMoreInteractions(productService);
+    }
+    
+  //------------------------------------------------------------------------------------------------------------
+    
+    // RESTful API method for Create operation
+    /**
+     * Handle a POST request to create a new product.
+     *
+     * This method is responsible for creating a new product resource in the system
+     * based on the provided request data. It processes the incoming HTTP POST request
+     * to create a new product and returns a response indicating the success or failure
+     * of the operation.
+     *
+     * @param productRequest The request body containing the details of the new product
+     *                       to be created.
+     * @return A ResponseEntity representing the result of the operation. If the product
+     *         creation is successful, it returns HTTP status 201 (Created) along with
+     *         the newly created product's details. If there is an error in the request
+     *         or product creation process, it returns an appropriate error response.
+     *
+     * @throws BadRequestException If the incoming request data is invalid or missing
+     *                            required fields.
+     * @throws InternalServerErrorException If an unexpected error occurs during the
+     *                                     product creation process.
+     */
+    //test case checks if the controller properly handles the case where the incoming product data is invalid
+    //1.Test Case for Successful Product Addition:
+    @Test
+    public void testAddProductSuccess() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        Product productToAdd = new Product(null,"New Product", 150, "Category1");
+        when(productService.save(productToAdd)).thenReturn(productToAdd);
+
+        // Act
+        ResponseEntity<String> response = productController.add(productToAdd);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        String expectedSuccessMessage = "Product has been added successfully. Added Product Details: \n" 
+                + "\nProductID:" + productToAdd.getId() + "\nProductName:"
+                + productToAdd.getName() + "\nProductPrice:" + productToAdd.getPrice()
+                + "\nProductCategory:" + productToAdd.getCategory();
+        assertEquals(expectedSuccessMessage, response.getBody());
+        verify(productService, times(1)).save(productToAdd);
+        verifyNoMoreInteractions(productService);
+    }
+    
+    //2.Test Case for Exception Handling During Product Addition:
+    @Test
+    public void testAddProductError() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        Product productToAdd = new Product(null,"New Product", 150, "Category");
+        when(productService.save(productToAdd)).thenThrow(new RuntimeException("Simulated exception"));
+
+        // Act
+        ResponseEntity<String> response = productController.add(productToAdd);
+
+        // Assert
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Error occurred while adding the product.", response.getBody());
+        verify(productService, times(1)).save(productToAdd);
+        verifyNoMoreInteractions(productService);
+    }
+    
+    
+    
+    
+  //------------------------------------------------------------------------------------------------------------
+    
+    // RESTful API method for Update operation
+    /**
+     * Update a product with the specified ID.
+     *
+     * @param id The ID of the product to update.
+     * @param product The updated product data as a request payload.
+     * @return The updated product.
+     * @throws NotFoundException if the product with the given ID does not exist.
+     */
+    //These three test cases cover different scenarios for the update() method, including successful update, error handling, and handling non-existent products.
+//1.Test Case for Successful Product Update:
+    @Test
+    public void testUpdateProductSuccess() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        Integer productId = 1; 
+        Product updatedProduct = new Product(productId,"Updated Product", 200, "New Category");
+        when(productService.get(productId)).thenReturn(updatedProduct);
+
+        // Act
+        ResponseEntity<String> response = productController.update(updatedProduct, productId);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Product updated successfully", response.getBody());
+        verify(productService, times(1)).get(productId);
+        verify(productService, times(1)).save(updatedProduct);
+        verifyNoMoreInteractions(productService);
+    }
+    
+    //2.Test Case for Updating a Non-Existent Product:
+    @Test
+    public void testUpdateNonExistentProduct() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        Integer productId = 99; // Replace with a non-existent product ID
+        Product updatedProduct = new Product(98,"Updated Product", 200, "New Category");
+        when(productService.get(productId)).thenThrow(new NoSuchElementException("Product not found"));
+
+        // Act
+        ResponseEntity<String> response = productController.update(updatedProduct, productId);
+
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals("Product not found", response.getBody());
+        verify(productService, times(1)).get(productId);
+        verifyNoMoreInteractions(productService);
+    }
+    
+//-------------------------------------------------------------------------------------------------   
+    // RESTful API method for Delete operation
+    /**
+     * Deletes a product with the specified ID.
+
+     * This endpoint allows the deletion of a product resource identified by its unique ID.
+     * The product will be removed from the system permanently.
+     *
+     * @param id The ID of the product to delete.
+     * @return A ResponseEntity with a status code indicating the result of the deletion operation.
+     *         If the product is successfully deleted, it returns HttpStatus.NO_CONTENT (204).
+     *         If the specified product ID is not found, it returns HttpStatus.NOT_FOUND (404).
+     *         If there was an error during the deletion process,
+     *          it returns HttpStatus.INTERNAL_SERVER_ERROR (500).
+     *
+     */
+    //1.Test Case for Successful Product Deletion:
+    @Test
+    public void testDeleteProductSuccess() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        Integer productId = 1; // Replace with an existing product ID
+        Product deletedProduct = new Product(productId, "Deleted Product", 100, "Category");
+        when(productService.delete(productId)).thenReturn(deletedProduct);
+
+        // Act
+        ResponseEntity<String> response = productController.delete(productId);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        String expectedSuccessMessage = "Product with ID " + productId 
+                + " has been deleted successfully. Deleted Product: " + deletedProduct.getName();
+        assertEquals(expectedSuccessMessage, response.getBody());
+        verify(productService, times(1)).delete(productId);
+        verifyNoMoreInteractions(productService);
+    }
+    
+    //2.Test Case for Deleting a Non-Existent Product:
+
+    @Test
+    public void testDeleteNonExistentProduct() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        Integer productId = 99; // Replace with a non-existent product ID
+        when(productService.delete(productId)).thenThrow(new NoSuchElementException("Product not found"));
+
+        // Act
+        ResponseEntity<String> response = productController.delete(productId);
+
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals("Product with ID " + productId + " not found.", response.getBody());
+        verify(productService, times(1)).delete(productId);
+        verifyNoMoreInteractions(productService);
+    }
+    
+//------------------------------------------------------------------------------------------------------    
+    /**
+     * Retrieve a list of products based on the specified category.
+
+     * This endpoint allows clients to retrieve a list of products belonging to a
+     * specific category. The category is specified as a path variable in the URL.
+     *
+     * @param category The category for which products are to be retrieved.
+     * @return A list of products in the specified category.
+     */
+    //1.Test Case for Successful Retrieval of Products by Category:
+    @Test
+    public void testGetProductsByCategorySuccess() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        String category = "Category1"; // Replace with an existing category
+        List<Product> products = new ArrayList<>();
+        products.add(new Product(1, "Product1", 100, category));
+        products.add(new Product(1, "Product2", 150, category));
+        when(productService.getProductsByCategory(category)).thenReturn(products);
+
+        // Act
+        ResponseEntity<?> response = productController.getByCategory(category);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(products, response.getBody());
+        verify(productService, times(1)).getProductsByCategory(category);
+        verifyNoMoreInteractions(productService);
+    }
+    
+    
+    //2.Test Case for No Products Found for a Category:
+
+    @Test
+    public void testGetProductsByCategoryNoProductsFound() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        String category = "NonExistentCategory"; // Replace with a non-existent category
+        List<Product> emptyProductList = new ArrayList<>();
+        when(productService.getProductsByCategory(category)).thenReturn(emptyProductList);
+
+        // Act
+        ResponseEntity<?> response = productController.getByCategory(category);
+
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals("No products found for category: " + category, response.getBody());
+        verify(productService, times(1)).getProductsByCategory(category);
+        verifyNoMoreInteractions(productService);
+    }
+
+
+//------------------------------------------------------------------------------------------------------------
+    /**
+     * Retrieve a list of products within a specific category and price range.
+     * This endpoint allows clients to retrieve a
+     *  list of products that belong to a particular category
+     * and fall within a specified price range.
+     */
+    //1.Test Case for Successful Retrieval of Products by Category and Price Range:
+    @Test
+    public void testGetProductsByCategoryAndPriceRangeSuccess() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        Integer productID=1;
+        Integer productID2=2;
+        String category = "Category1"; // Replace with an existing category
+        Double minPrice = 10.0;
+        Double maxPrice = 20.0;
+        List<Product> products = new ArrayList<>();
+        products.add(new Product(productID,"Product1", 150, category));
+        products.add(new Product(productID2,"Product2", 180, category));
+        when(productService.getProductsByCategoryAndPriceRange(category, minPrice, maxPrice)).thenReturn(products);
+
+        // Act
+        ResponseEntity<?> response = productController.getProductsByCategoryAndPriceRange(category, minPrice, maxPrice);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(products, response.getBody());
+        verify(productService, times(1)).getProductsByCategoryAndPriceRange(category, minPrice, maxPrice);
+        verifyNoMoreInteractions(productService);
+    }
+
+    //2.Test Case for No Products Found for a Category and Price Range:
+
+    @Test
+    public void testGetProductsByCategoryAndPriceRangeNoProductsFound() {
+        // Arrange
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+        String category = "NonExistentCategory"; // Replace with a non-existent category
+        Double minPrice = 10.0;
+        Double maxPrice = 20.0;
+        List<Product> emptyProductList = new ArrayList<>();
+        when(productService.getProductsByCategoryAndPriceRange(category, minPrice, maxPrice)).thenReturn(emptyProductList);
+
+        // Act
+        ResponseEntity<?> response = productController.getProductsByCategoryAndPriceRange(category, minPrice, maxPrice);
+
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals("No products found for category: " + category + " within the specified price range.", response.getBody());
+        verify(productService, times(1)).getProductsByCategoryAndPriceRange(category, minPrice, maxPrice);
+        verifyNoMoreInteractions(productService);
+    }
+
+
+
+}
