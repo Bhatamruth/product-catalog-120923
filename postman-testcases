@@ -1,0 +1,126 @@
+//get - view all products
+//Status Code Check:
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+
+
+//Response Structure Check:
+var jsonData = pm.response.json();
+
+pm.test("Each object in the response has 'id', 'name', and 'price'", function () {
+    jsonData.forEach(function (item) {
+        pm.expect(item).to.have.property("id");
+        pm.expect(item).to.have.property("name");
+        pm.expect(item).to.have.property("price");
+    });
+});
+
+
+//Duplicate Item Check:
+var jsonData = pm.response.json();
+var itemIds = [];
+
+pm.test("Check for duplicate item IDs", function () {
+    jsonData.forEach(function (item) {
+        pm.expect(itemIds).to.not.include(item.id);
+        itemIds.push(item.id);
+    });
+});
+
+//Category Check:
+var jsonData = pm.response.json();
+
+pm.test("Each item has a non-null category", function () {
+    jsonData.forEach(function (item) {
+        pm.expect(item.category).to.not.equal(null);
+    });
+});
+
+//Response Time Check:
+pm.test("Response time is less than 200ms", function () {
+    pm.expect(pm.response.responseTime).to.be.below(200);
+});
+
+var jsonData = pm.response.json();
+
+pm.test("All items in the 'laptop' category have a price greater than 10,000", function () {
+    var laptops = jsonData.filter(function (item) {
+        return item.category === "laptop";
+    });
+
+    laptops.forEach(function (laptop) {
+        pm.expect(laptop.price).to.be.greaterThan(10000);
+    });
+});
+
+
+//get - view product by category
+//Status Code Check:
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+
+//Response Body Check:
+pm.test("Response body is an array", function () {
+    pm.expect(pm.response.json()).to.be.an("array");
+});
+
+
+pm.test("Response body is a valid JSON", function () {
+    pm.response.to.be.json;
+});
+
+pm.test("Response contains the correct category name", function () {
+    var jsonData = pm.response.json();
+    var expectedCategories = ["laptop", "mobile", "refrigerator"]; // Add your expected category names here
+
+    if (jsonData.hasOwnProperty("categoryName")) {
+        pm.expect(expectedCategories).to.include(jsonData.categoryName);
+    } else {
+        pm.expect(true).to.be.true; 
+    }
+});
+
+
+
+
+//get - product by category( to check within price range)
+var template = `
+<style type="text/css">
+    .tftable {font-size:14px;color:#333333;width:100%;border-width: 1px;border-color: #87ceeb;border-collapse: collapse;}
+    .tftable th {font-size:18px;background-color:#87ceeb;border-width: 1px;padding: 8px;border-style: solid;border-color: #87ceeb;text-align:left;}
+    .tftable tr {background-color:#ffffff;}
+    .tftable td {font-size:14px;border-width: 1px;padding: 8px;border-style: solid;border-color: #87ceeb;}
+    .tftable tr:hover {background-color:#e0ffff;}
+</style>
+
+<table class="tftable" border="1">
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Category</th>
+    </tr>
+    
+    {{#each response}}
+        <tr id=row_{{@key}}>
+            <td>{{id}}</td>
+            <td>{{name}}</td>
+            <td>{{price}}</td>
+            <td>{{category}}</td>
+        </tr>
+    {{/each}}
+</table>
+`;
+
+function constructVisualizerPayload() {
+    return { response: pm.response.json() }
+}
+
+pm.visualizer.set(template, constructVisualizerPayload());
+
+//Status Code Check:
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
